@@ -9,21 +9,12 @@
           <div class="top-left">会议室1</div>
           <div class="top-middle">
             <div class="pre-order-info">
-              <div class="status">
-                <span>占用情况:</span>
-                <div>
-                  <div :class="{busy:1 == room1_info.status,unknown:0 == room1_info.status,avail:2 == room1_info.status}"></div>
-                  <span>{{room1_status_str}}</span>
-                </div>
-              </div>
-              <div class="left-time">
-                <span>剩余时间:</span>
-                <span>{{room1_info.left_time}}</span>
-              </div>
-              <div class="holder">
-                <span>占用者:</span>
-                <span>{{room1_info.holder}}</span>
-              </div>
+              <el-table width="100%" height="meetings" :data="room1_info.meetings">
+                <el-table-column prop="holder" label="预订人"></el-table-column>
+                <el-table-column prop="meeting_title" label="主题"></el-table-column>
+                <el-table-column prop="start_time" label="预定开始时间"></el-table-column>
+                <el-table-column prop="end_time" label="预定结束时间"></el-table-column>
+              </el-table>
             </div>
           </div>
           <div class="top-right">
@@ -34,21 +25,12 @@
           <div class="top-left">会议室2</div>
           <div class="top-middle">
             <div class="pre-order-info">
-              <div class="status">
-                <span>占用情况:</span>
-                <div>
-                  <div :class="{busy:1 == room2_info.status,unknown:0 == room2_info.status,avail:2 == room2_info.status}"></div>
-                  <span>{{room2_status_str}}</span>
-                </div>
-              </div>
-              <div class="left-time">
-                <span>剩余时间:</span>
-                <span>{{room2_info.left_time}}</span>
-              </div>
-              <div class="holder">
-                <span>占用者:</span>
-                <span>{{room2_info.holder}}</span>
-              </div>
+              <el-table width="100%" height="meetings" :data="room2_info.meetings">
+                <el-table-column prop="holder" label="预订人"></el-table-column>
+                <el-table-column prop="meeting_title" label="主题"></el-table-column>
+                <el-table-column prop="start_time" label="预定开始时间"></el-table-column>
+                <el-table-column prop="end_time" label="预定结束时间"></el-table-column>
+              </el-table>
             </div>
           </div>
           <div class="top-right">
@@ -63,21 +45,18 @@
 <script>
   import Api from '../api/api';
   import PreOrderTime from './pre_order_time';
+  import util from '../util'
   export default {
     components:{PreOrderTime},
     data(){
       return {
         room1_info: {
-          meeting_title: '',
-          holder: '',
-          start_time: '',
-          end_time: ''
+          current:{},
+          meetings: []
         },
         room2_info:{
-          meeting_title: '',
-          holder: '',
-          start_time: '',
-          end_time: ''
+          current:{},
+          meetings: []
         },
         dialog_show: false,
         dialog_title: '',
@@ -85,49 +64,27 @@
       }
     },
     computed:{
-      room1_status_str(){
-        switch (this.room1_info.status){
-          case 0:
-            return '未知';
-          case 1:
-            return '占用';
-          case 2:
-            return '空闲';
-          default:
-            return '';
-        }
-      },
-      room2_status_str(){
-        switch (this.room2_info.status){
-          case 0:
-            return '未知';
-          case 1:
-            return '占用';
-          case 2:
-            return '空闲';
-          default:
-            return '';
-        }
-      }
+
+    },
+    mounted(){
+      this.check_room();
     },
     methods:{
       check_room(){
         let vm = this;
-        Api.get_meeting_room_pre_order().then(res=>{
+        Api.get_all_meetings({current_time:util.format(new Date())}).then(res=>{
           if(200 == res.status && 200 == res.data.code){
-            vm.room1_info = res.data.hold_info.room1;
-            vm.room2_info = res.data.hold_info.room2;
+            vm.room1_info = res.data.room_info.room1;
+            vm.room2_info = res.data.room_info.room2;
           }else{
-            this.$alert('提示','查看会议室信息失败',
-              {
-                type: 'warning'
-              });
+            this.$alert('提示','查看会议室信息失败,',{
+              type: 'warning'
+            });
           }
         }).catch(err=>{
-          this.$alert('提示',err,
-              {
-                type: 'warning'
-              });
+          this.$alert('提示','查看会议室信息失败,'+err,{
+            type: 'warning'
+          });
         })
       },
       time_dialog_on_close(timerange){
@@ -147,30 +104,36 @@
       },
       pre_order(timerange){
         let vm = this;
-        timerange.forEach(time=>{
-          var ntime = new Date(time);
-          console.log(ntime);
-        })
-        let start_time = timerange[0];
-        let end_time = timerange[1];
+        let now = new Date();
+        let start_time = util.format(new Date(timerange[0]));
+        let end_time = util.format(new Date(timerange[1]));
         Api.pre_order_meeting_room({
           which_meeting_room: this.which,
           start_time: start_time,
           end_time: end_time,
-          holder: '毛毛莎'
+          holder: '毛毛莎',
+          current_time:util.format(now)
         }).then(res=>{
           if(200 == res.status && 200 == res.data.code){
-            this.$alert("会议室"+this.which+"预订成功",'提示',{
+            vm.$alert("会议室"+this.which+"预订成功",'提示',{
               type: 'success'
             });
+            console.log(res.data);
+            if(1 == this.which){
+              vm.room1_info = res.data.room1_info;
+            }else if(2 == this.which){
+              vm.room2_info = res.data.room2_info;
+            }
           }else{
-            this.$alert("会议室"+this.which+"预订失败"+","+res.data.msg,'提示',{
+            vm.$alert("会议室"+this.which+"预订失败,"+res.data.msg,'提示',{
               type: 'warning'
             });
           }
           this.which = 0;
         }).catch(err=>{
-          console.log(err);
+          vm.$alert("会议室"+this.which+"预订失败,"+err,'提示',{
+            type: 'warning'
+          });
           this.which = 0;
         })
       }
@@ -214,7 +177,7 @@
           box-sizing: border-box;
           width: 100%;
           .top-left{
-            width: 20%;
+            width: 15%;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -222,7 +185,7 @@
             height: 100%;
           }
           .top-right{
-            width: 40%;
+            width: 30%;
             height: 100%;
             display: flex;
             flex-direction: column;
@@ -237,61 +200,18 @@
             }
           }
           .top-middle{
-            width: 40%;
+            width: 55%;
             height: 100%;
             display: flex;
             align-items: center;
             &>.pre-order-info{
               width: 100%;
               height: 100%;
+              padding: 2px;
               border: 2px dashed dodgerblue;
               border-radius: 8px;
-              &>div{
-                display: flex;
-                align-items: center;
-                height: 33.33%;
-                width: 100%;
-                padding: 0 8px;
-                box-sizing: border-box;
-                &>span{
-                  flex-shrink: 0;
-                }
-              }
-              &>.status{
-                &>div{
-                  display: flex;
-                  align-items: center;
-                  height: 100%;
-                  width: 100%;
-                  margin-left: 16px;
-                  &>span{
-                    margin-left: 16px;
-                    flex-shrink: 0;
-                  }
-                  &>div{
-                    width: 90%;
-                    height: 90%;
-                    max-width: 100%;
-                    max-height: 100%;
-                  }
-                  .busy{
-                    background-color: red;
-                  }
-                  .avail{
-                    background-color: lime;
-                  }
-                  .unknown{
-                    background-color: dimgrey;
-                  }
-                }
-                border-bottom: 2px dashed dodgerblue;
-              }
-              &>.left-time{
-                margin-top: 0;
-                border-bottom: 2px dashed dodgerblue;
-              }
-              &>.holder{
-                margin-top: 0;
+              &>.el-table{
+                height: 100%;
               }
             }
           }
@@ -305,7 +225,7 @@
           box-sizing: border-box;
           width: 100%;
           .top-left{
-            width: 20%;
+            width: 15%;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -313,7 +233,7 @@
             height: 100%;
           }
           .top-right{
-            width: 40%;
+            width: 30%;
             height: 100%;
             display: flex;
             flex-direction: column;
@@ -328,7 +248,7 @@
             }
           }
           .top-middle{
-            width: 40%;
+            width: 55%;
             height: 100%;
             display: flex;
             align-items: center;
@@ -337,52 +257,8 @@
               height: 100%;
               border: 2px dashed dodgerblue;
               border-radius: 8px;
-              &>div{
-                display: flex;
-                align-items: center;
-                height: 33.33%;
-                width: 100%;
-                padding: 0 8px;
-                box-sizing: border-box;
-                &>span{
-                  flex-shrink: 0;
-                }
-              }
-              &>.status{
-                &>div{
-                  display: flex;
-                  align-items: center;
-                  height: 100%;
-                  width: 100%;
-                  margin-left: 16px;
-                  &>span{
-                    margin-left: 16px;
-                    flex-shrink: 0;
-                  }
-                  &>div{
-                    width: 90%;
-                    height: 90%;
-                    max-width: 100%;
-                    max-height: 100%;
-                  }
-                  .busy{
-                    background-color: red;
-                  }
-                  .avail{
-                    background-color: lime;
-                  }
-                  .unknown{
-                    background-color: dimgrey;
-                  }
-                }
-                border-bottom: 2px dashed dodgerblue;
-              }
-              &>.left-time{
-                margin-top: 0;
-                border-bottom: 2px dashed dodgerblue;
-              }
-              &>.holder{
-                margin-top: 0;
+              &>.el-table{
+                height: 100%;
               }
             }
           }

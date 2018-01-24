@@ -1,7 +1,7 @@
 import { httpClient } from './base';
 
 export default {
-	get_meeting_room_pre_order(params) {
+	get_all_meetings(params) {
 		return httpClient.get('',
 		{
 			params: params,
