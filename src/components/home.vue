@@ -87,10 +87,10 @@
           });
         })
       },
-      time_dialog_on_close(timerange){
+      time_dialog_on_close(timerange,title){
         this.dialog_show = false;
         if(timerange && timerange.length && 2 == timerange.length){
-          this.pre_order(timerange);
+          this.pre_order(timerange,title);
         }
       },
       show_select_time_dialog(which){
@@ -102,7 +102,7 @@
         this.dialog_show = true;
         this.which = which;
       },
-      pre_order(timerange){
+      pre_order(timerange,title){
         let vm = this;
         let now = new Date();
         let start_time = util.format(new Date(timerange[0]));
@@ -112,13 +112,13 @@
           start_time: start_time,
           end_time: end_time,
           holder: '毛毛莎',
+          meeting_title: title,
           current_time:util.format(now)
         }).then(res=>{
           if(200 == res.status && 200 == res.data.code){
             vm.$alert("会议室"+this.which+"预订成功",'提示',{
               type: 'success'
             });
-            console.log(res.data);
             if(1 == this.which){
               vm.room1_info = res.data.room1_info;
             }else if(2 == this.which){
